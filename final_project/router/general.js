@@ -33,7 +33,7 @@ public_users.get('/isbn/:isbn',function (req, res) {
         return res.status(200).send(JSON.stringify(book, null, 2));
     } else {
 	return res.status(300).json({message: "Book not found"});
- });
+ }});
   
 // Get book details based on author
 public_users.get('/author/:author',function (req, res) {
