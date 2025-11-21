@@ -56,18 +56,38 @@ const { username, password } = req.body || {};
 // Add a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
   //Write your code here
+// Add or modify a book review (session-based username; review passed as query param)
+  const isbn = req.params.isbn;
+  const review = req.query.review;              
+  const username = req.session && req.session.username; 
+  if (!username) {
+    return res.status(401).json({ message: "Authentication required (login with session)." });
+  }
 
-const isbn = req.params.isbn;
-  const review = req.body.review || req.body.comment || req.body.text;
-  const username = getUsernameFromReq(req);
-  if (!username) return res.status(401).json({ message: "Authentication required."});
+  if (!review) {
+    return res.status(400).json({ message: "Review text required as query parameter: ?review=your_text" });
+  }
+
   const book = books[isbn];
-  if (!book) return res.status(404).json({ message: "Book not found."});
-  if (!book.reviews) book.reviews = {};
-  const isUpdate = !!book.reviews[username];
-  book.reviews[username] = review || "";
-  return res.status(300).json({message: "Review ${isUpdate ? `updated` : `added`}.", isbn, username, review: book.reviews[username]});
+  if (!book) {
+    return res.status(404).json({ message: "Book not found." });
+  }
+
+  if (!book.reviews || typeof book.reviews !== 'object') {
+    book.reviews = {};
+  }
+
+  const isUpdate = Boolean(book.reviews[username]);
+  book.reviews[username] = review;
+
+  return res.status(300).json({
+    message: `Review ${isUpdate ? "updated" : "added"} successfully.`,
+    isbn,
+    username,
+    review: book.reviews[username]
+  });
 });
+
 
 module.exports.authenticated = regd_users;
 module.exports.isValid = isValid;
