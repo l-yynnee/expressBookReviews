@@ -40,6 +40,7 @@ function getUsernameFromReq(req) {
 regd_users.post("/login", (req,res) => {
   //Write your code here
 
+
 const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ message: "Username and password required."});
   if (!authenticatedUser(username, password)) return res.status(401).json({ message: "Invalid credentials."});
