@@ -88,6 +88,34 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
   });
 });
 
+// Delete a book review (only the review owner can delete)
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+  const isbn = req.params.isbn;
+  // get username from session or token helper
+  const username = req.session && req.session.username ? req.session.username : getUsernameFromReq(req);
+
+  if (!username) {
+    return res.status(401).json({ message: "Authentication required (login first)." });
+  }
+
+  const book = books[isbn];
+  if (!book) {
+    return res.status(404).json({ message: "Book not found." });
+  }
+
+  if (!book.reviews || typeof book.reviews !== "object" || !book.reviews[username]) {
+    return res.status(404).json({ message: "No review by this user for the specified ISBN." });
+  }
+
+  // delete only this user's review
+  delete book.reviews[username];
+
+  return res.status(300).json({
+    message: "Review deleted successfully.",
+    isbn,
+    username
+  });
+});
 
 module.exports.authenticated = regd_users;
 module.exports.isValid = isValid;
