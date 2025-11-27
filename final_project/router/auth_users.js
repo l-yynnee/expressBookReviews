@@ -3,120 +3,134 @@ const jwt = require('jsonwebtoken');
 let books = require("./booksdb.js");
 const regd_users = express.Router();
 
-let users = [];
-
-const isValid = (username)=>{ //returns boolean
-//write code to check is the username is valid
+let users = []; // { username, password }
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret';
 
+// Validate username format (simple email pattern)
 const isValid = (username) => {
   if (!username || typeof username !== 'string') return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
   return re.test(username);
-}:
+};
 
-const authenticatedUser = (username,password)=>{ //returns boolean
-//write code to check if username and password match the one we have in records.
-
+// Check matching username/password in users array
+const authenticatedUser = (username, password) => {
   return users.some(u => u.username === username && u.password === password);
 };
 
+// extract username from session OR JWT token
 function getUsernameFromReq(req) {
-  if (req.session && req.session.username) return req.session.username;
+  if (req.session && req.session.username) {
+    return req.session.username;
+  }
+
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   if (!authHeader) return null;
+
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return null;
+
   try {
     const payload = jwt.verify(parts[1], JWT_SECRET);
     return payload.username;
   } catch (e) {
     return null;
   }
-
 }
 
-//only registered users can login
-regd_users.post("/login", (req,res) => {
-  //Write your code here
+
+regd_users.post("/register", (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (!username || !password)
+    return res.status(400).json({ message: "Username and password required." });
+
+  if (!isValid(username))
+    return res.status(400).json({ message: "Invalid username format." });
+
+  if (users.some(u => u.username === username))
+    return res.status(409).json({ message: "User already exists." });
+
+  users.push({ username, password });
+  return res.status(201).json({ message: "User registered successfully." });
+});
 
 
-const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ message: "Username and password required."});
-  if (!authenticatedUser(username, password)) return res.status(401).json({ message: "Invalid credentials."});
+regd_users.post("/login", (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (!username || !password)
+    return res.status(400).json({ message: "Username and password required." });
+
+  if (!authenticatedUser(username, password))
+    return res.status(401).json({ message: "Invalid credentials." });
+
   const userId = users.findIndex(u => u.username === username) + 1;
+
+  // Save session authentication
   if (req.session) {
     req.session.userId = userId;
     req.session.username = username;
   }
+
+  // Create JWT token
   const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: "2h" });
-  return res.status(300).json({message: "Login successful", token});
+
+  return res.status(200).json({
+    message: "Login successful",
+    token
+  });
 });
 
-// Add a book review
-regd_users.put("/auth/review/:isbn", (req, res) => {
-  //Write your code here
-// Add or modify a book review (session-based username; review passed as query param)
-  const isbn = req.params.isbn;
-  const review = req.query.review;              
-  const username = req.session && req.session.username; 
-  if (!username) {
-    return res.status(401).json({ message: "Authentication required (login with session)." });
-  }
 
-  if (!review) {
-    return res.status(400).json({ message: "Review text required as query parameter: ?review=your_text" });
-  }
+regd_users.put("/auth/review/:isbn", (req, res) => {
+  const isbn = req.params.isbn;
+  const review = req.body.review || req.body.comment || req.body.text;
+
+  const username = getUsernameFromReq(req);
+  if (!username)
+    return res.status(401).json({ message: "Authentication required." });
 
   const book = books[isbn];
-  if (!book) {
+  if (!book)
     return res.status(404).json({ message: "Book not found." });
-  }
 
-  if (!book.reviews || typeof book.reviews !== 'object') {
-    book.reviews = {};
-  }
+  if (!book.reviews) book.reviews = {};
 
-  const isUpdate = Boolean(book.reviews[username]);
-  book.reviews[username] = review;
+  const isUpdate = !!book.reviews[username];
+  book.reviews[username] = review || "";
 
-  return res.status(300).json({
-    message: `Review ${isUpdate ? "updated" : "added"} successfully.`,
+  return res.status(200).json({
+    message: `Review ${isUpdate ? 'updated' : 'added'}.`,
     isbn,
     username,
     review: book.reviews[username]
   });
 });
 
-// Delete a book review (only the review owner can delete)
+
 regd_users.delete("/auth/review/:isbn", (req, res) => {
   const isbn = req.params.isbn;
-  // get username from session or token helper
-  const username = req.session && req.session.username ? req.session.username : getUsernameFromReq(req);
 
-  if (!username) {
-    return res.status(401).json({ message: "Authentication required (login first)." });
-  }
+  const username = getUsernameFromReq(req);
+  if (!username)
+    return res.status(401).json({ message: "Authentication required." });
 
   const book = books[isbn];
-  if (!book) {
+  if (!book)
     return res.status(404).json({ message: "Book not found." });
-  }
 
-  if (!book.reviews || typeof book.reviews !== "object" || !book.reviews[username]) {
-    return res.status(404).json({ message: "No review by this user for the specified ISBN." });
-  }
+  if (!book.reviews || !book.reviews[username])
+    return res.status(404).json({ message: "No review by this user to delete." });
 
-  // delete only this user's review
   delete book.reviews[username];
 
-  return res.status(300).json({
+  return res.status(200).json({
     message: "Review deleted successfully.",
     isbn,
     username
   });
 });
-
 module.exports.authenticated = regd_users;
 module.exports.isValid = isValid;
 module.exports.users = users;
