@@ -17,16 +17,16 @@ public_users.post("/register", (req,res) => {
 });
 
 // Get the book list available in the shop
-public_users.get('/', function (req, res) {
-  axios.get("http://localhost:5000/")
-    .then(response => {
-      res.status(200).json(response.data);
-    })
-    .catch(error => {
-      res.status(300).json({ message: "Error retrieving book list" });
-    });
-});
-});
+//public_users.get('/', function (req, res) {
+ // axios.get("http://localhost:5000/")
+ //   .then(response => {
+  //    res.status(200).json(response.data);
+  //  })
+  //  .catch(error => {
+   //   res.status(300).json({ message: "Error retrieving book list" });
+  //  });
+//});
+//});
 
 // Get book details based on ISBN
 public_users.get('/isbn/:isbn',function (req, res) {
