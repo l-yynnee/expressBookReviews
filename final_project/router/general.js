@@ -118,5 +118,5 @@ public_users.get("/axios/title/:title", (req, res) => {
     });
 });
 
-module.exports.general = public_users;
+
 module.exports.general = public_users;
