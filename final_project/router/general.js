@@ -16,98 +16,49 @@ public_users.post("/register", (req,res) => {
   return res.status(300).json({message: "User registered successfully."});
 });
 
-public_users.get('/', function (req, res) {
-  let p1 = new Promise((resolve, reject) => {
-    // simulate async fetch of books
-    setTimeout(() => resolve(books), 100);
-  });
-
-  let p2 = (data) => new Promise((resolve) => {
-    // could transform data here; we just resolve same data
-    resolve(data);
-  });
-
-  p1.then((data1) => {
-    // first callback
-    p2(data1).then((data2) => {
-      // nested callback
-      return res.status(200).send(JSON.stringify(data2, null, 2));
-    });
-  }).catch(err => res.status(500).json({ message: "Error retrieving books" }));
+// Get the book list available in the shop
+public_users.get('/', function (req, res)=> {
+return res.status(300).json(books);
 });
+ 
+// Get book details based on ISBN
+public_users.get('/isbn/:isbn',function (req, res) {
+  //Write your code here
+    const isbn = req.params.isbn;
+    const book = books[isbn];
 
-public_users.get('/isbn/:isbn', function (req, res) {
-  const isbn = req.params.isbn;
-
-  let fetchByIsbn = new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (books[isbn]) resolve(books[isbn]);
-      else reject(new Error("Book not found"));
-    }, 100);
-  });
-
-  let formatResult = (book) => new Promise((resolve) => {
-    // format or add extra info if needed
-    resolve(book);
-  });
-
-  fetchByIsbn.then((book) => {
-    // first callback
-    formatResult(book).then((finalBook) => {
-      // nested callback
-      return res.status(200).send(JSON.stringify(finalBook, null, 2));
-    });
-  }).catch(err => res.status(404).json({ message: err.message }));
-});
+    if (book) {
+        return res.status(200).send(JSON.stringify(book, null, 2));
+    } else {
+	return res.status(300).json({message: "Book not found"});
+ }});
   
-public_users.get('/author/:author', function (req, res) {
-  const q = req.params.author.toLowerCase();
-
-  let findByAuthor = new Promise((resolve) => {
-    setTimeout(() => {
-      const matches = Object.keys(books).reduce((acc, k) => {
-        if (books[k].author && books[k].author.toLowerCase().includes(q)) acc[k] = books[k];
-        return acc;
-      }, {});
-      resolve(matches);
-    }, 100);
+// Get book details based on author
+public_users.get('/author/:author',function (req, res) {
+  //Write your code here
+const authorQuery = req.params.author.toLowerCase();
+  const results = {};
+  Object.keys(books).forEach(isbn => {
+    if (books[isbn].author && books[isbn].author.toLowerCase().includes(authorQuery)) results[isbn] = books[isbn];
   });
-
-  let finalize = (result) => new Promise((resolve) => {
-    resolve(result);
-  });
-
-  findByAuthor.then((res1) => {
-    finalize(res1).then((res2) => {
-      if (Object.keys(res2).length === 0) return res.status(404).json({ message: "No books found for that author." });
-      return res.status(200).send(JSON.stringify(res2, null, 2));
-    });
-  }).catch(() => res.status(500).json({ message: "Error searching by author" }));
+  if (Object.keys(results).length === 0) 
+  return res.status(300).json({message: "No books found for that author"});
+ return res.status(200).send(JSON.stringify(results, null, 2));
 });
-public_users.get('/title/:title', function (req, res) {
-  const q = req.params.title.toLowerCase();
 
-  let findByTitle = new Promise((resolve) => {
-    setTimeout(() => {
-      const matches = Object.keys(books).reduce((acc, k) => {
-        if (books[k].title && books[k].title.toLowerCase().includes(q)) acc[k] = books[k];
-        return acc;
-      }, {});
-      resolve(matches);
-    }, 100);
+// Get all books based on title
+public_users.get('/title/:title',function (req, res) {
+  //Write your code here
+const titleQuery = req.params.title.toLowerCase();
+  const results = {};
+  Object.keys(books).forEach(isbn => {
+    if (books[isbn].title && books[isbn].title.toLowerCase().includes(titleQuery)) results[isbn] = books[isbn];
   });
-
-  let finalize = (result) => new Promise((resolve) => {
-    resolve(result);
-  });
-
-  findByTitle.then((r1) => {
-    finalize(r1).then((r2) => {
-      if (Object.keys(r2).length === 0) return res.status(404).json({ message: "No books found for that title." });
-      return res.status(200).send(JSON.stringify(r2, null, 2));
-    });
-  }).catch(() => res.status(500).json({ message: "Error searching by title" }));
-});
+  if (Object.keys(results).length === 0)
+ return res.status(300).json({ message: "No books found for that title."});
+  return res.status(200).send(JSON.stringify(results, null, 2));
+});	
+  
 //  Get book review
 public_users.get('/review/:isbn',function (req, res) {
   //Write your code here
@@ -115,4 +66,57 @@ public_users.get('/review/:isbn',function (req, res) {
   if (!book) return res.status(300).json({ message: "Book not found" });
   return res.status(200).json(book.reviews || {});
 });
+public_users.get("/axios/books", (req, res) => {
+  axios.get("http://localhost:5000/")
+    .then(response => {
+      return res.status(200).json(response.data);
+    })
+    .catch(err => {
+      return res.status(500).json({ message: "Axios failed" });
+    });
+});
+
+
+
+public_users.get("/axios/isbn/:isbn", (req, res) => {
+  const isbn = req.params.isbn;
+
+  axios.get(`http://localhost:5000/isbn/${isbn}`)
+    .then(response => {
+      return res.status(200).json(response.data);
+    })
+    .catch(err => {
+      return res.status(404).json({ message: "Book not found via Axios" });
+    });
+});
+
+
+
+public_users.get("/axios/author/:author", (req, res) => {
+  const author = req.params.author;
+
+  axios.get(`http://localhost:5000/author/${author}`)
+    .then(response => {
+      return res.status(200).json(response.data);
+    })
+    .catch(err => {
+      return res.status(404).json({ message: "Author not found via Axios" });
+    });
+});
+
+
+
+public_users.get("/axios/title/:title", (req, res) => {
+  const title = req.params.title;
+
+  axios.get(`http://localhost:5000/title/${title}`)
+    .then(response => {
+      return res.status(200).json(response.data);
+    })
+    .catch(err => {
+      return res.status(404).json({ message: "Title not found via Axios" });
+    });
+});
+
+module.exports.general = public_users;
 module.exports.general = public_users;
