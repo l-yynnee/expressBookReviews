@@ -7,7 +7,8 @@ const axios = require("axios");
 
 
 public_users.post("/register", (req,res) => {
-  //Write your code hereconst { username, password } = req.body || {};
+  //Write your code here
+const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ message: "Username and password required."});
   if (!isValid(username)) return res.status(400).json({ message: "Invalid username format."});
   if (users.find(u => u.username === username)) return res.status(400).json({ message: "User already exists."});
